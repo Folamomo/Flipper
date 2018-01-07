@@ -9,6 +9,13 @@ Created on Sat Dec 16 22:54:04 2017
 import os, sys
 import pygame
 
+class Options(object):
+    def __init__(self):
+        self.g=50
+        self.speed=2
+        self.ball_start=(200, 200)
+        self.ball_speed=(100, -100)
+
 def load_image(name, colorkey=None):
     fullname=os.path.join('data', name)
     try:
@@ -36,64 +43,94 @@ def load_sound(name):
         raise SystemExit
     return sound
 
+class Edge(pygame.sprite.Sprite):
+    def __init__ (self, start, end):
+        pygame.sprite.Sprite.__init__(self)
+        self.add(coliders)
+        self.start=pygame.math.Vector2(start)
+        self.end=pygame.math.Vector2(end)
+        self.normal=pygame.math.Vector2(self.end.x-self.start.x, self.end.y-self.start.y).rotate(90).normalize()
+        self.bouncines=0.5
+        #set up rect properly
+        self.rect=pygame.Rect(0, 0, 0, 0)
+        self.rect.top=min(self.end.y, self.start.y)
+        self.rect.bottom=max(self.end.y, self.start.y)       
+        self.rect.left=min(self.end.x, self.start.x)
+        self.rect.right=max(self.end.x, self.start.x)
+        
+class Vertex(pygame.sprite.Sprite):
+    def __init__(self, position):
+        pygame.sprite.Sprite.__init__(self)
+        self.add(coliders)
+        self.x, self. y = position
+        self.radius=1
+        self.bouncines=0.95
+        self.rect=pygame.Rect(self.x-self.radius, self.y-self.radius, 2*self.radius+1, 2*self.radius+1)
+        
 class Ball(pygame.sprite.Sprite):
     def __init__ (self, position, velocity=(0, 0)):
         pygame.sprite.Sprite.__init__(self)
+        self.add(balls)
         self.position=pygame.math.Vector2(position)
         self.velocity=pygame.math.Vector2(velocity)
         self.image, self.rect=load_image("ball.png", -1)
+        self.radius=self.rect.w/2
+    def bounce (self, normal, bouncines):
+        if self.velocity.angle_to(normal)>90 or self.velocity.angle_to(normal)<-90:
+            self.velocity=self.velocity.reflect(normal)
+            self.velocity-=normal*self.velocity.dot(normal)*(1-bouncines) #slow ball down in normal axis, parallel unchanged
         
-    def bounce (self, angle, bouncines):
-        self.velocity=self.velocity.reflect(angle)
-        self.velocity+=angle*self.velocity.length()*(1-bouncines)
-    
+    def colision_detection (self, coliders):
+        
+        for colider in coliders.sprites():#pygame.sprite.spritecollide(self, coliders, False, pygame.sprite.collide_circle):  
+            if type(colider) is Edge:
+                if self.radius > colider.normal.x*(self.position.x-colider.start.x)+colider.normal.y*(self.position.y-colider.start.y):
+                    self.bounce(colider.normal, colider.bouncines)
     def update (self):
         self.gravity()
         
-        #insert colision check
+        #colision check
         
-        if self.position.y<50:
-            colisionAngle=pygame.math.Vector2(0, -1)
-            self.bounce(colisionAngle, 0.95)
-            
-        if self.position.x<50:
-            colisionAngle=pygame.math.Vector2(-1, 0)
-            self.bounce(colisionAngle, 0.95)
-            
-        if self.position.y>550:
-            colisionAngle=pygame.math.Vector2(0, 1)
-            self.bounce(colisionAngle, 0.95)
-            
-        if self.position.x>550:
-            colisionAngle=pygame.math.Vector2(1, 0)
-            self.bounce(colisionAngle, 0.95)
-
+        self.colision_detection(coliders)
+        
+     
          
          
         
         
-        self.position+=self.velocity*dt
-        self.rect.x, self.rect.y =self.position
+        self.position+=self.velocity*dt*options.speed
+        self.rect.center=self.position
     def gravity (self):
-        self.velocity+=pygame.math.Vector2(0, 50)*dt
+        self.velocity+=pygame.math.Vector2(0, options.g)*dt*options.speed
 
+options=Options()
 #inicjalizacja ekranu    
 pygame.init()
-screen = pygame.display.set_mode((800, 600))
+
+screen = pygame.display.set_mode((600, 800))
 pygame.display.set_caption('Flipper')
+
 # Fill background
 background = pygame.Surface(screen.get_size())
 background = background.convert()
 background.fill((0, 0, 0))
+
+    # Initialise sprite Groups
+balls = pygame.sprite.Group()
+coliders=pygame.sprite.Group()
     # Initialise ball
-ball = Ball((200, 200), (100, -100))
-    # Initialise sprites
-ballsprite = pygame.sprite.RenderPlain(ball)
+ball = Ball(options.ball_start,options.ball_speed)
     # Blit everything to the screen
 screen.blit(background, (0, 0))
 pygame.display.flip()
     # Initialise clock
 clock = pygame.time.Clock()
+
+
+top=Edge((50 , 50) , (550, 50))
+right=Edge((550, 50), (550, 500))
+bottom=Edge((550, 500), (50, 550))
+left=Edge((50, 550), (50, 50))
 
 quit=False
 
@@ -107,8 +144,8 @@ while quit is not True:
             quit=True
     
     screen.blit(background, ball.rect, ball.rect)
-    ballsprite.update()
-    ballsprite.draw(screen)
+    balls.update()
+    balls.draw(screen)
     pygame.display.flip()
 
 pygame.quit()
