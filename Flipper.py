@@ -43,15 +43,39 @@ class Ball(pygame.sprite.Sprite):
         self.velocity=pygame.math.Vector2(velocity)
         self.image, self.rect=load_image("ball.png", -1)
         
-    def reflect (self, angle):
-        self.velocity.reflect(0)
+    def bounce (self, angle, bouncines):
+        self.velocity=self.velocity.reflect(angle)
+        self.velocity+=angle*self.velocity.length()*(1-bouncines)
     
     def update (self):
         self.gravity()
-        self.position+=self.velocity
+        
+        #insert colision check
+        
+        if self.position.y<50:
+            colisionAngle=pygame.math.Vector2(0, -1)
+            self.bounce(colisionAngle, 0.95)
+            
+        if self.position.x<50:
+            colisionAngle=pygame.math.Vector2(-1, 0)
+            self.bounce(colisionAngle, 0.95)
+            
+        if self.position.y>550:
+            colisionAngle=pygame.math.Vector2(0, 1)
+            self.bounce(colisionAngle, 0.95)
+            
+        if self.position.x>550:
+            colisionAngle=pygame.math.Vector2(1, 0)
+            self.bounce(colisionAngle, 0.95)
+
+         
+         
+        
+        
+        self.position+=self.velocity*dt
         self.rect.x, self.rect.y =self.position
     def gravity (self):
-        self.velocity=self.velocity+pygame.math.Vector2(0, 0.01)
+        self.velocity+=pygame.math.Vector2(0, 50)*dt
 
 #inicjalizacja ekranu    
 pygame.init()
@@ -62,7 +86,7 @@ background = pygame.Surface(screen.get_size())
 background = background.convert()
 background.fill((0, 0, 0))
     # Initialise ball
-ball = Ball((200, 200), (1, -1))
+ball = Ball((200, 200), (100, -100))
     # Initialise sprites
 ballsprite = pygame.sprite.RenderPlain(ball)
     # Blit everything to the screen
@@ -74,13 +98,14 @@ clock = pygame.time.Clock()
 quit=False
 
 while quit is not True:
-        # Make sure game doesn't run at more than 60 frames per second
-    clock.tick(60)
-
+    
+    dt=clock.tick(60)/1000     #frame length in seconds
+   # print(clock.get_fps())
+    
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             quit=True
-        print(event)
+    
     screen.blit(background, ball.rect, ball.rect)
     ballsprite.update()
     ballsprite.draw(screen)
