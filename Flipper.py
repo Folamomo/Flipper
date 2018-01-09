@@ -17,7 +17,8 @@ class Options(object):
         self.speed=3
         self.ball_start=(200, 400)
         self.ball_speed=(100, -100)
-        self.drawpolygons=True
+        self.drawpolygons=False
+        self.drawshapes=True
         
 def load_image(name, colorkey=None):
     fullname=os.path.join('data', name)
@@ -68,6 +69,10 @@ class Edge(pygame.sprite.Sprite):
         self.rect.bottom=max(self.end.y, self.start.y)       
         self.rect.left=min(self.end.x, self.start.x)
         self.rect.right=max(self.end.x, self.start.x)
+        
+        #draw to background
+        if options.drawshapes == True:
+            pygame.gfxdraw.line(background, int(self.start.x), int(self.start.y), int(self.end.x), int(self.end.y), (255, 255, 255))
 
        
 class Circle(pygame.sprite.Sprite):
@@ -78,15 +83,16 @@ class Circle(pygame.sprite.Sprite):
         self.radius=radius
         self.material=material
         self.rect=pygame.Rect(self.position.x-self.radius, self.position.y-self.radius, self.position.x+self.radius, self.position.y+self.radius)
-        if options.drawpolygons == True:
-            pygame.gfxdraw.circle(background, int(self.position.x), int(self.position.y), self.radius, (255, 255, 255))           
+        if options.drawshapes == True:
+            pygame.gfxdraw.circle(background, int(self.position.x), int(self.position.y), int(self.radius), (255, 255, 255))           
 class Polygon (pygame.sprite.Group):
-    def __init__(self, vertices):
+    def __init__(self, vertices, material=steel):
         self.edges=[]
         self.vertices=[]
+        self.material=material
         for i in range(len(vertices)):
-            self.edges.append(Edge(vertices[i-1], vertices[i]))
-            self.vertices.append(Circle(vertices[i]))
+            self.edges.append(Edge(vertices[i-1], vertices[i], self.material))
+            self.vertices.append(Circle(vertices[i], 0.5, self.material))
         if options.drawpolygons==True:
             pygame.gfxdraw.polygon(background, vertices, (255, 255, 255))
             
@@ -96,20 +102,20 @@ class Ball(pygame.sprite.Sprite):
         self.add(balls)
         self.position=pygame.math.Vector2(position)
         self.velocity=pygame.math.Vector2(velocity)
-        self.image, self.rect=load_image("ball1.png", -1)
+        self.image, self.rect=load_image("ball.png", -1)
         self.radius=self.rect.w/2
     def bounce (self, normal, material):
         if self.velocity.angle_to(normal)>90 or self.velocity.angle_to(normal)<-90:
             self.velocity-=normal*self.velocity.dot(normal)*(1+material.bouncines) #using analitic geometry (magic)
-        
-    def colision_detection (self, coliders):
-        
+            print (material.bouncines)
+    def colision_detection (self, coliders): 
         for colider in coliders.sprites(): 
             if type(colider) is Edge:
                 if self.radius > colider.normal.x*(self.position.x-colider.start.x)+colider.normal.y*(self.position.y-colider.start.y): #distance from enge<radius
                     if 0<colider.normal.y*(self.position.x-colider.start.x)-colider.normal.x*(self.position.y-colider.start.y):         #inside box
                         if 0<-colider.normal.y*(self.position.x-colider.end.x)+colider.normal.x*(self.position.y-colider.end.y):
                             self.bounce(colider.normal, colider.material)
+                            
             elif type(colider) is Circle: 
                 if self.radius+colider.radius>(self.position-colider.position).length():
                     self.bounce((self.position-colider.position).normalize(), colider.material)
@@ -118,9 +124,7 @@ class Ball(pygame.sprite.Sprite):
         self.gravity()
         
         #colision check
-        
         self.colision_detection(coliders)
-        
         
         self.position+=self.velocity*dt*options.speed
         self.rect.center=self.position
@@ -131,7 +135,7 @@ options=Options()
 #inicjalizacja ekranu    
 pygame.init()
 
-screen = pygame.display.set_mode((600, 800))
+screen = pygame.display.set_mode((800, 600))
 pygame.display.set_caption('Flipper')
 
     # Fill background
@@ -145,13 +149,14 @@ balls = pygame.sprite.Group()
 coliders=pygame.sprite.Group()
     # Initialise ball
 ball1 = Ball(options.ball_start,options.ball_speed)
-#ball2 = Ball((120, 60), (0, 30))
+ball2 = Ball((120, 60), (0, 30))
     # Initialise clock
 clock = pygame.time.Clock()
     #initialise field
-edges=Polygon([(50 , 0) , (500, 50), (550, 700), (55, 800)])
+edges=Polygon([(50 , 0) , (500, 50), (550, 600), (55, 400)])
+line=Polygon([ (500, 500), (400, 500)])
 #square=Polygon([(201 , 200) , (200, 101), (101, 100), (100, 201)])
-circle1=Circle((100, 500), 55)
+circle1=Circle((100, 200), 55)
     # Blit everything to the screen
 screen.blit(background, (0, 0))
 pygame.display.flip()
@@ -160,7 +165,7 @@ quit=False
 
 while quit is not True:
     
-    dt=clock.tick(60)/1000     #frame length in seconds
+    dt=clock.tick()/1000     #frame length in seconds
    # print(clock.get_fps())
     
     for event in pygame.event.get():
