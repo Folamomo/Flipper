@@ -53,6 +53,7 @@ class Material(object):
         self.bouncines=bouncines
         
 steel=Material("steelsound", 0.7)
+bouncer=Material("bouncersound", 1.1)
 
 class Edge(pygame.sprite.Sprite):
     def __init__ (self, start, end, material=steel):
@@ -73,8 +74,14 @@ class Edge(pygame.sprite.Sprite):
         #draw to background
         if options.drawshapes == True:
             pygame.gfxdraw.line(background, int(self.start.x), int(self.start.y), int(self.end.x), int(self.end.y), (255, 255, 255))
-
-       
+    def move(self, vector):
+        self.start+=vector
+        self.end+=vector
+        self.rect.x+=vector.x
+        self.revt.y+=vector.y
+    
+    
+    
 class Circle(pygame.sprite.Sprite):
     def __init__(self, position, radius=1,  material=steel):
         pygame.sprite.Sprite.__init__(self)
@@ -84,7 +91,12 @@ class Circle(pygame.sprite.Sprite):
         self.material=material
         self.rect=pygame.Rect(self.position.x-self.radius, self.position.y-self.radius, self.position.x+self.radius, self.position.y+self.radius)
         if options.drawshapes == True:
-            pygame.gfxdraw.circle(background, int(self.position.x), int(self.position.y), int(self.radius)+1, (255, 255, 255))           
+            pygame.gfxdraw.circle(background, int(self.position.x), int(self.position.y), int(self.radius)+1, (255, 255, 255))    
+    def move(self, vector):
+        self.position+=vector
+        self.rect.x+=vector.x
+        self.revt.y+=vector.y
+        
 class Polygon (pygame.sprite.Group):
     def __init__(self, vertices, material=steel):
         self.edges=[]
@@ -95,7 +107,11 @@ class Polygon (pygame.sprite.Group):
             self.vertices.append(Circle(vertices[i], 0, self.material))
         if options.drawpolygons==True:
             pygame.gfxdraw.polygon(background, vertices, (255, 255, 255))
-            
+    def move(self, vector):
+        for edge in self.edges:
+            edge.move(vector)
+        for circle in self.vertices:
+            circle.move(vector)
 class Ball(pygame.sprite.Sprite):
     def __init__ (self, position, velocity=(0, 0)):
         pygame.sprite.Sprite.__init__(self)
@@ -131,7 +147,18 @@ class Ball(pygame.sprite.Sprite):
         self.rect.center=self.position
     def gravity (self):
         self.velocity+=pygame.math.Vector2(0, options.g)*dt*options.speed
-
+class Arm(pygame.sprite.Sprite):
+    def __init__(self, axis, shape, rotationlimit):
+        pygame.sprite.Sprite.__init__(self)
+        self.axis=pygame.math.Vector2(axis) #point the arm rotates around
+        self.shape=shape    #relative to axis
+        self.image, self.rect=load_image("arm.png")
+        self.rotationlimit=rotationlimit
+        self.angle=0
+        self.direction #1 or -1
+        self.colider=Polygon(shape).move(axis)
+        
+    
 options=Options()
 #inicjalizacja ekranu    
 pygame.init()
@@ -148,19 +175,14 @@ background.fill((0, 0, 0))
     # Initialise sprite Groups
 balls = pygame.sprite.Group()
 coliders=pygame.sprite.Group()
+arm1=Arm(350, 500)
     # Initialise ball
 ball1 = Ball(options.ball_start,options.ball_speed)
-ball2 = Ball((120, 90), (70, 0))
     # Initialise clock
 clock = pygame.time.Clock()
     #initialise field
-edges=Polygon([(50 , 0) , (500, 50), (550, 500), (55, 400)])
-line=Polygon([ (500, 500), (400, 500)])
-square=Polygon([(201 , 200) , (200, 101), (101, 100), (100, 201)])
-circle1=Circle((100, 200), 55)
-circle2=Circle((300, 310), 0)
-square2=Polygon([(250, 250), (250, 300), (300, 300), (300, 250)])
-ball3=Ball((320, 230), (-68.356, 50))
+edges=Polygon([(50 , 50) , (550, 50), (550, 350), (350, 500), (350, 550), (250, 550), (250, 500), (50, 350)])
+bottom=Edge((350, 545), (250, 545), bouncer)
     # Blit everything to the screen
 screen.blit(background, (0, 0))
 pygame.display.flip()
