@@ -11,14 +11,14 @@ import pygame
 import pygame.gfxdraw
 
 
+
 class Options(object):
     def __init__(self):
         self.g=50
         self.speed=3
         self.ball_start=(200, 400)
         self.ball_speed=(100, -100)
-        self.drawpolygons=False
-        self.drawshapes=True
+        self.drawcoliders=True
         
 def load_image(name, colorkey=None):
     fullname=os.path.join('data', name)
@@ -71,14 +71,14 @@ class Edge(pygame.sprite.Sprite):
         self.rect.left=min(self.end.x, self.start.x)
         self.rect.right=max(self.end.x, self.start.x)
         
-        #draw to background
-        if options.drawshapes == True:
-            pygame.gfxdraw.line(background, int(self.start.x), int(self.start.y), int(self.end.x), int(self.end.y), (255, 255, 255))
+    def update(self):
+        pygame.gfxdraw.line(screen, int(self.start.x), int(self.start.y), int(self.end.x), int(self.end.y), (255, 255, 255))
     def move(self, vector):
+        vector=pygame.math.Vector2(vector)
         self.start+=vector
         self.end+=vector
         self.rect.x+=vector.x
-        self.revt.y+=vector.y
+        self.rect.y+=vector.y
     
     
     
@@ -90,9 +90,11 @@ class Circle(pygame.sprite.Sprite):
         self.radius=radius
         self.material=material
         self.rect=pygame.Rect(self.position.x-self.radius, self.position.y-self.radius, self.position.x+self.radius, self.position.y+self.radius)
-        if options.drawshapes == True:
-            pygame.gfxdraw.circle(background, int(self.position.x), int(self.position.y), int(self.radius)+1, (255, 255, 255))    
+        
+    def update(self):
+        pygame.gfxdraw.circle(screen, int(self.position.x), int(self.position.y), int(self.radius)+1, (255, 255, 255))    
     def move(self, vector):
+        vector=pygame.math.Vector2(vector)
         self.position+=vector
         self.rect.x+=vector.x
         self.revt.y+=vector.y
@@ -105,8 +107,6 @@ class Polygon (pygame.sprite.Group):
         for i in range(len(vertices)):
             self.edges.append(Edge(vertices[i-1], vertices[i], self.material))
             self.vertices.append(Circle(vertices[i], 0, self.material))
-        if options.drawpolygons==True:
-            pygame.gfxdraw.polygon(background, vertices, (255, 255, 255))
     def move(self, vector):
         for edge in self.edges:
             edge.move(vector)
@@ -160,12 +160,11 @@ class Arm(pygame.sprite.Sprite):
         
     
 options=Options()
-#inicjalizacja ekranu    
+    #inicjalizacja ekranu    
 pygame.init()
 
 screen = pygame.display.set_mode((800, 600))
 pygame.display.set_caption('Flipper')
-
     # Fill background
 background = pygame.Surface(screen.get_size())
 background = background.convert()
@@ -175,7 +174,7 @@ background.fill((0, 0, 0))
     # Initialise sprite Groups
 balls = pygame.sprite.Group()
 coliders=pygame.sprite.Group()
-arm1=Arm(350, 500)
+
     # Initialise ball
 ball1 = Ball(options.ball_start,options.ball_speed)
     # Initialise clock
@@ -197,9 +196,16 @@ while quit is not True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             quit=True
-    for ball in balls:
-        screen.blit(background, ball.rect, ball.rect)
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_z:
+                bottom.move((0, -50))
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_z:
+                bottom.move((0, 50))
+    screen.blit(background, (0, 0))
     balls.update()
+    if options.drawcoliders == True:
+        coliders.update()
     balls.draw(screen)
     pygame.display.flip()
 
