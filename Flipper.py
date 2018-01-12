@@ -14,7 +14,7 @@ import pygame.gfxdraw
 class Options(object):
     def __init__(self):
         self.g=50
-        self.speed=0.5
+        self.speed=3
         self.ball_start=(200, 400)
         self.ball_speed=(100, -100)
         self.drawpolygons=False
@@ -150,7 +150,7 @@ balls = pygame.sprite.Group()
 coliders=pygame.sprite.Group()
     # Initialise ball
 ball1 = Ball(options.ball_start,options.ball_speed)
-ball2 = Ball((120, 115), (70, 0))
+ball2 = Ball((120, 90), (70, 0))
     # Initialise clock
 clock = pygame.time.Clock()
     #initialise field
