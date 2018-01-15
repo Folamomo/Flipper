@@ -11,7 +11,6 @@ import pygame
 import pygame.gfxdraw
 import math
 import threading
-import copy
 
 class Options(object):
     def __init__(self):
@@ -251,9 +250,6 @@ class Arm(pygame.sprite.Sprite):
             for i in range(len(self.colider.vertices)):
                 newcenter=self.shape.vertices[i].position.rotate(self.angle*self.turndirection)+self.axis
                 self.colider.vertices[i].moveto(newcenter)
-    def print(self):
-        self.image=pygame.transform.rotate(self.baseimage, self.angle*-1)
-        screen.blit(self.image, self.axis-self.imageaxis.rotate(self.angle))
 options=Options()
     #inicjalizacja ekranu    
 pygame.init()
@@ -327,8 +323,6 @@ while quit is not True:
     screen.blit(background, (0, 0))
     if options.drawcoliders == True:
         coliders.update()
-    for arm in arms.sprites():
-        arm.print()
     balls.draw(screen)
     pygame.display.flip()
 
