@@ -16,8 +16,8 @@ class Options(object):
     def __init__(self):
         self.g=50
         self.speed=3
-        self.ball_start=(200, 400)
-        self.ball_speed=(100, -100)
+        self.ball_start=(535, 540)
+        self.ball_speed=(-10, 0)
         self.drawcoliders=True
         
 def load_image(name, colorkey=None):
@@ -52,8 +52,11 @@ class Material(object):
        # self.sound=load_sound(bouncesound)
         self.bouncines=bouncines
         
+    #initialize materials
 steel=Material("steelsound", 0.6)
-bouncer=Material("bouncersound", 1.2)
+bouncermaterial=Material("bouncersound", 1.2)
+death=Material("deathsound", 0)
+armmaterial=Material("armsound", 0.4)
 
 class Edge(pygame.sprite.Sprite):
     def __init__ (self, start, end, material=steel):
@@ -164,10 +167,13 @@ class Ball(pygame.sprite.Sprite):
         self.image, self.rect=load_image("ball.png", -1)
         self.radius=self.rect.w/2
     def bounce (self, normal, material, parent):
-        if parent is None:
-            coliderVelocity=(0, 0)
-        elif type(parent) is Arm:
+        coliderVelocity=(0, 0)
+        if type(parent) is Arm:
             coliderVelocity=(self.position-parent.axis).rotate(90)*math.radians(parent.angularvelocity*parent.turndirection)
+        if parent == target:
+            addpoints()
+        if material == death:
+            self.kill()
         relativeVelocity=(self.velocity-coliderVelocity)
         if relativeVelocity.angle_to(normal)>90 or relativeVelocity.angle_to(normal)<-90:
             relativeVelocity-=normal*relativeVelocity.dot(normal)*(1+material.bouncines) #using analytic geometry (magic)
@@ -189,10 +195,11 @@ class Ball(pygame.sprite.Sprite):
                     colisionnormal=(self.position-colider.position).normalize()
                     colisionangle=pygame.math.Vector2(1 , 0).angle_to(colisionnormal)
                     if colisionangle>colider.start and colisionangle<colider.end:
-                        if colider.radius<(self.position-colider.position).length():
-                            self.bounce(colisionnormal, colider.material, colider.parent)
-                        elif colider.radius-self.radius<(self.position-colider.position).length():
+                        if colider.radius-self.radius<(self.position-colider.position).length():
                             self.bounce(-colisionnormal, colider.material, colider.parent)
+                        elif colider.radius<(self.position-colider.position).length():
+                            self.bounce(colisionnormal, colider.material, colider.parent)
+                        
                             
                             
                 
@@ -207,6 +214,16 @@ class Ball(pygame.sprite.Sprite):
         
     def gravity (self):
         self.velocity+=pygame.math.Vector2(0, options.g)*dt*options.speed
+        
+class Trigger:
+    def __init__(self, action):
+        self.triggerthread=threading.Thread(target=action)
+    def activate(self):
+        self.triggerthread.start()
+def addpoints():
+    global score
+    score +=100
+    return
         
 class Arm(pygame.sprite.Sprite):
     def __init__(self, axis, shape, rotationlimit, rotatespeed, turndirection, image, imageaxis, key): 
@@ -250,80 +267,133 @@ class Arm(pygame.sprite.Sprite):
             for i in range(len(self.colider.vertices)):
                 newcenter=self.shape.vertices[i].position.rotate(self.angle*self.turndirection)+self.axis
                 self.colider.vertices[i].moveto(newcenter)
-options=Options()
-    #inicjalizacja ekranu    
-pygame.init()
+target=Trigger(addpoints)
+def initfield():
+        # Initialise ball
+    Ball(options.ball_start,options.ball_speed)
+        
+    
+        #initialise field
+    Shape([(50 , 50) , (530, 50), (529, 600), (370, 750), (370, 820), (230, 820), (230, 750), (50, 600)]).add(coliders)
+    Shape([(150, 650), (200, 700), (150, 550)], bouncermaterial).add(coliders)
+    Shape([(400, 700),  (450, 650), (450, 550)], bouncermaterial).add(coliders)
+    Arc((295, 300), 246,  -180, 0).add(coliders)  
+    Edge((540, 300), (540, 550)).add(coliders)
+    Shape([(530, 550), (530, 300)]).add(coliders)
+    Shape([(530, 570), (550, 570), (550, 550), (530, 550)]).add(coliders)
+    Edge((370, 790), (230, 790), death).add(coliders)
+    
+    circle1=Circle((300, 400), 15, bouncermaterial)
+    circle1.add(coliders)
+    circle1.parent=target
+    circle2=Circle((350, 350), 15, bouncermaterial)
+    circle2.add(coliders)
+    circle2.parent=target
+    circle3=Circle((240, 320), 15, bouncermaterial)
+    circle3.add(coliders)
+    circle3.parent=target
+    
+    #initiate arms
+    armshape1=Shape([(0, 10), (50, 15), (50, 5), (0, -10)], armmaterial)
+    armshape1.makecircle((0, 0), 10)
+    armshape1.makecircle((50, 10), 5)
+    
+    armshape2=Shape([(0, -10), (-50, 5), (-50, 15), (0, 10)], armmaterial)
+    armshape2.makecircle((0, 0), 10)
+    armshape2.makecircle((-50, 10), 5)
+    
+    arm1=Arm((230, 760), armshape1, 45, 180, -1, "arm.png", (0, 0), pygame.K_z)
+    
+    arm2=Arm((370, 760), armshape2, 45, 280, 1, "arm.png", (40, 5), pygame.K_m)
 
-screen = pygame.display.set_mode((800, 600))
-pygame.display.set_caption('Flipper')
-    # Fill background
-background = pygame.Surface(screen.get_size())
-background = background.convert()
-background.fill((0, 0, 0))
-    #initialize materials
-
-    # Initialise sprite Groups
-balls = pygame.sprite.Group()
-coliders=pygame.sprite.Group()
-arms=pygame.sprite.Group()
-
-    # Initialise ball
-ball1 = Ball(options.ball_start,options.ball_speed)
-    # Initialise clocks
-physicsclock = pygame.time.Clock()
-displayclock = pygame.time.Clock()
-    #initialise field
-edges=Shape([(50 , 50) , (551, 50), (550, 350), (350, 500), (350, 550), (250, 550), (250, 500), (50, 350)])
-edges.makearc((200, 300), 50, 45, 135)
-
-edges.add(coliders)
-bottom=Edge((350, 545), (250, 545), bouncer)
-
-bottom.add(coliders)
-armshape2=Shape([(-40, 10), (0, 0)])
-armshape1=Shape([(0, 0), (40, 10)])
-
-arm1=Arm((250, 500), armshape1, 45, 180, -1, "arm.png", (0, 0), pygame.K_z)
-arm2=Arm((350, 500), armshape2, 45, 280, 1, "arm.png", (40, 5), pygame.K_m)
-arc1=Arc((200, 200), 100, 45, 135)
-arc1.add(coliders)
-
-    # Blit everything to the screen
-screen.blit(background, (0, 0))
-pygame.display.flip()
-
-quit=False
+def menu():
+    bg1, a = load_image("bg1.png") 
+    bg2, a = load_image("bg2.png") 
+    bg3, a = load_image("bg3.png") 
+    images=[bg1, bg2, bg3]
+    flag=True
+    location=0
+    while flag:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            if event.type == pygame.KEYDOWN:
+                if event.key==pygame.K_DOWN:
+                    location+=1
+                if event.key == pygame.K_UP:
+                    location-=1
+                if event.key==pygame.K_RETURN:
+                    if location == 0:
+                        return True
+                    if location == 1:
+                        a=0
+                    if location == 2:
+                        return False
+        screen.blit(images[location], (0, 0))
+        pygame.display.flip()
 dt = 1
 def physics():
-    while quit is not True:
+    physicsclock = pygame.time.Clock() # Initialise clock
+    while balls.sprites() != []:
         global dt
         dt=physicsclock.tick(1000)/1000
         balls.update()
         arms.update()
+    return()
+def gameloop():
+    quit = False
+    displayclock = pygame.time.Clock()
+    while quit is not True:
         
-physicsthread=threading.Thread(target=physics)
-physicsthread.start()
-
-while quit is not True:
+        displayclock.tick(60)     #frame length in seconds
     
-    displayclock.tick(60)     #frame length in seconds
-
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            quit=True
-        if event.type == pygame.KEYDOWN:
-            for arm in arms.sprites():
-                if event.key==arm.key:
-                    arm.startrotating()
-        if event.type == pygame.KEYUP:
-             for arm in arms.sprites():
-                if event.key==arm.key:
-                    arm.stoprotating()
-    
-    screen.blit(background, (0, 0))
-    if options.drawcoliders == True:
-        coliders.update()
-    balls.draw(screen)
-    pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                quit=True
+            if event.type == pygame.KEYDOWN:
+                for arm in arms.sprites():
+                    if event.key==arm.key:
+                        arm.startrotating()
+            if event.type == pygame.KEYUP:
+                 for arm in arms.sprites():
+                    if event.key==arm.key:
+                        arm.stoprotating()
+                 if event.key == pygame.K_SPACE:
+                    for ball in balls.sprites():
+                        if ball.position.x>530 and ball.position.y>530:
+                            ball.velocity=pygame.math.Vector2(0, -250)
+        
+        screen.blit(background, (0, 0))
+        
+        points = font.render("Score: "+str(score), True, (255, 255, 153))
+        screen.blit(points, (430, 700))
+        if options.drawcoliders == True:
+            coliders.update()
+        balls.draw(screen)
+        pygame.display.flip()
+        if balls.sprites() == []:
+            quit = True
+    return
+    #initialize options
+options=Options()
+    #initialize screen    
+pygame.init()
+screen = pygame.display.set_mode((600, 800))
+pygame.display.set_caption('Flipper')
+    # Initialise sprite Groups
+balls = pygame.sprite.Group()
+coliders=pygame.sprite.Group()
+arms=pygame.sprite.Group()
+    #initialize fonts
+font = pygame.font.SysFont("Ubuntu Mono", 24)
+    # make background
+background, bgrect = load_image("background.png")
+while menu() != False:
+          #initialize physics
+    score=0
+    physicsthread=threading.Thread(target=physics)
+    initfield()
+    physicsthread.start()
+    gameloop()
 
 pygame.quit()
