@@ -319,9 +319,9 @@ def menu():
                 return False
             if event.type == pygame.KEYDOWN:
                 if event.key==pygame.K_DOWN:
-                    location+=1
+                    location=(location+1)%3
                 if event.key == pygame.K_UP:
-                    location-=1
+                    location=(location-1)%3
                 if event.key==pygame.K_RETURN:
                     if location == 0:
                         return True
@@ -373,6 +373,7 @@ def gameloop():
         pygame.display.flip()
         if balls.sprites() == []:
             quit = True
+    coliders.empty()
     return
     #initialize options
 options=Options()
